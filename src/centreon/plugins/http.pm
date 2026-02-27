@@ -109,8 +109,7 @@ sub check_options {
     if (defined($options{request}->{$self->{http_backend} . '_backend_options'})) {
         foreach (keys %{$options{request}->{$self->{http_backend} . '_backend_options'}}) {
             $options{request}->{$_} = $options{request}->{$self->{http_backend} . '_backend_options'}->{$_};
-        }
-    }
+        }}
 
     if (($options{request}->{proto} ne 'http') && ($options{request}->{proto} ne 'https')) {
         $self->{output}->add_option_msg(short_msg => "Unsupported protocol specified: '(" . $options{request}->{proto} . ")'. . Use either https or http.");
