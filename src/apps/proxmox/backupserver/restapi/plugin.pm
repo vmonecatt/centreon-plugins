@@ -37,7 +37,8 @@ sub new {
         'list-vms'          => 'apps::proxmox::ve::restapi::mode::listvms',
         'system-usage'      => 'apps::proxmox::backupserver::restapi::mode::systemusage',
         'storage-usage'     => 'apps::proxmox::ve::restapi::mode::storageusage',
-        'version'           => 'apps::proxmox::ve::restapi::mode::version',
+        'datastore-usage'   => 'apps::proxmox::ve::backupserver::mode::datastoreusage',
+        'version'           => 'apps::proxmox::backupserver::restapi::mode::version',
         'vm-usage'          => 'apps::proxmox::ve::restapi::mode::vmusage'
     };
 
@@ -55,7 +56,7 @@ Monitor Proxmox Backup Server resources through its HTTPS REST API.
 
 API documentation can be checked at https://pbs.proxmox.com/docs/api-viewer/.
 
-Requirements: Proxmox VE 4.x.
+Requirements: Proxmox Backup Server 4.x.
 
 =over 8
 

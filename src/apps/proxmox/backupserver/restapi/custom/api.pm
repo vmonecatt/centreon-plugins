@@ -56,7 +56,7 @@ sub new {
             'reload-cache-time:s' => { name => 'reload_cache_time', default => 7200 }
         });
     }
-    
+
     $options{options}->add_help(package => __PACKAGE__, sections => 'REST API OPTIONS', once => 1);
 
     $self->{output} = $options{output};
@@ -145,7 +145,7 @@ sub get_ticket {
     my $has_cache_file = $options{statefile}->read(statefile => 'proxmox_backup_server_api_' . md5_hex($self->{option_results}->{hostname}) . '_' . md5_hex($self->{option_results}->{api_username}));
     my $expires_on = $options{statefile}->get(name => 'expires_on');
     my $ticket = $options{statefile}->get(name => 'ticket');
-    
+
     if ($has_cache_file == 0 || !defined($ticket) || (($expires_on - time()) < 10)) {
         my $post_data = 'username=' . $self->{api_username} .
             '@' . $self->{realm} .
@@ -211,7 +211,7 @@ sub request_api {
 
 sub get_version {
     my ($self, %options) = @_;
-    
+
     my $content = $self->request_api(method => 'GET', url_path =>'/api2/json/version');
     return $content->{version};
 }
@@ -266,7 +266,7 @@ sub api_list_nodes {
 
 sub internal_api_list_storages {
     my ($self, %options) = @_;
-    
+
     my $storage = $self->request_api(method => 'GET', url_path =>'/api2/json/cluster/resources?type=storage');
     return $storage;
 }
@@ -289,7 +289,7 @@ sub api_list_storages {
 
 sub internal_api_list_datastores {
     my ($self, %options) = @_;
-    
+
     my $datastore = $self->request_api(method => 'GET', url_path =>'/api2/json/admin/datastore');
     return $datastore;
 }
@@ -301,7 +301,7 @@ sub api_list_datastores {
     my $list_datastores = $self->internal_api_list_datastores();
     foreach my $datastore (@{$list_datastores}) {
         $datastores->{$datastore->{store}} = {
-            Status => $datastore->{mount-status}
+            Status => $datastore->{'mount-status'}
         };
     }
 
@@ -351,6 +351,7 @@ sub cache_nodes {
     return $nodes;
 }
 
+# This must be deleted after I am happy with the function cache_datastore
 sub cache_storages {
     my ($self, %options) = @_;
 
@@ -371,6 +372,28 @@ sub cache_storages {
     }
 
     return $storages;
+}
+
+sub cache_datastores {
+    my ($self, %options) = @_;
+
+    my $has_cache_file = $options{statefile}->read(statefile => 'cache_pbs_datastore_' . $self->{hostname} . '_' . $self->{port});
+    my $timestamp_cache = $options{statefile}->get(name => 'last_timestamp');
+    my $datastores = $options{statefile}->get(name => 'datastores');
+    if ($has_cache_file == 0 || !defined($timestamp_cache) || ((time() - $timestamp_cache) > (($options{reload_cache_time})))) {
+        $datastores = {};
+        my $list_datastores = $self->internal_api_list_storages();
+        foreach my $datastore (@{$list_datastores}) {
+            $datastores->{$storage->{id}} = {
+                State => $storage->{status},
+                Node => $storage->{node},
+                Name => $storage->{storage}
+            };
+        }
+        $options{statefile}->write(data => $datastores);
+    }
+
+    return $datastores;
 }
 
 sub internal_api_get_network_interfaces {
@@ -485,6 +508,13 @@ sub internal_api_get_storage_stats {
     return $storage_stats;
 }
 
+sub internal_api_get_datastore_stats {
+    my ($self, %options) = @_;
+
+    my $datastore_stats = $self->request_api(method => 'GET', url_path => '/api2/json/status/datastore-usage');
+    return $datastore_stats;
+}
+
 sub internal_api_get_vm_node {
     my ($self, %options) = @_;
 
@@ -581,7 +611,7 @@ sub api_get_nodes {
 
 sub api_get_storages {
     my ($self, %options) = @_;
-    
+
     my $storages = $self->cache_storages(statefile => $options{statefile});
 
     if (defined($options{storage_id}) && $options{storage_id} ne '') {
@@ -618,6 +648,41 @@ sub api_get_storages {
     }
 
     return $storages;
+}
+
+# Delete this after customizing the function api_get_datastores
+sub api_list_datastores {
+    my ($self, %options) = @_;
+
+    my $datastores = {};
+    my $list_datastores = $self->internal_api_list_datastores();
+    foreach my $datastore (@{$list_datastores}) {
+        $datastores->{$datastore->{store}} = {
+            Status => $datastore->{'mount-status'}
+        };
+    }
+
+    return $datastores;
+}
+
+sub api_get_datastores {
+    my ($self, %options) = @_;
+
+    my $datastores = $self->cache_datastores(statefile => $options{statefile});
+
+    if (defined($options{datastore_name}) && $options{datastore_name} ne '') {
+        foreach my $datastore (keys %$datastores) {
+            if ($datastores->{$datastore}->{Name} eq $options{datastore_name}) {
+                $datastores->{$datastore}->{Stats} = $self->internal_api_get_datastore_stats();
+            }
+        }
+    } else {
+        foreach my $datastore (keys %$datastores) {
+            $datastores->{$datastore}->{Stats} = $self->internal_api_get_datastore_stats();
+        }
+    }
+
+    return $datastores;
 }
 
 1;
