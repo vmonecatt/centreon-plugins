@@ -77,7 +77,7 @@ sub custom_datastore_calc {
 
     $self->{result_values}->{display} = $options{new_datas}->{$self->{instance} . '_display'};
     $self->{result_values}->{total} = $options{new_datas}->{$self->{instance} . '_datastore_total'};
-    $self->{result_values}->{used} = $options{new_datas}->{$self->{instance} . '_datastore_usage'};
+    $self->{result_values}->{used} = $options{new_datas}->{$self->{instance} . '_datastore_used'};
     $self->{result_values}->{free} = $self->{result_values}->{total} - $self->{result_values}->{used};
 
     return -10 if ($self->{result_values}->{total} <= 0);
@@ -103,15 +103,8 @@ sub set_counters {
     ];
 
     $self->{maps_counters}->{datastores} = [
-        { label => 'storage-status', type => 2, set => {
-                key_values => [ { name => 'state' }, { name => 'name' } ],
-                closure_custom_output => $self->can('custom_status_output'),
-                closure_custom_perfdata => sub { return 0; },
-                closure_custom_threshold_check => \&catalog_status_threshold_ng
-            }
-        },
         { label => 'datastore', set => {
-                key_values => [ { name => 'datastore_usage' }, { name => 'datastore_total' }, { name => 'display' } ],
+                key_values => [ { name => 'datastore_used' }, { name => 'datastore_total' }, { name => 'display' } ],
                 closure_custom_calc => $self->can('custom_datastore_calc'),
                 closure_custom_output => $self->can('custom_datastore_output'),
                 closure_custom_perfdata => $self->can('custom_datastore_perfdata'),
@@ -155,40 +148,39 @@ sub check_options {
 sub manage_selection {
     my ($self, %options) = @_;
 
-    my $result = $options{custom}->api_get_datastores(
+    my $results = $options{custom}->api_get_datastores(
         datastore_name => $self->{option_results}->{datastore_name},
         statefile => $self->{statefile_cache_datastores}
     );
 
-    $self->{storages} = {};
-    foreach my $storage_id (keys %{$result}) {
-        next if (!defined($result->{$storage_id}->{Stats}));
+    $self->{datastores} = {};
+    foreach my $datastore (keys %{$results}) {
+        next if (!defined($results->{$datastore}->{Stats}));
 
-        my $name = $result->{$storage_id}->{Name};
+        my $name = $results->{$datastore}->{Name};
         if (defined($self->{option_results}->{filter_name}) && $self->{option_results}->{filter_name} ne '' &&
             $name !~ /$self->{option_results}->{filter_name}/) {
             $self->{output}->output_add(long_msg => "skipping  '" . $name . "': no matching filter.", debug => 1);
             next;
         }
 
-        $self->{storages}->{$storage_id} = {
-            display => defined($self->{option_results}->{use_name}) ? $name : $storage_id,
+        $self->{datastores}->{$datastore} = {
+            display => defined($self->{option_results}->{use_name}) ? $name : $datastore,
             name => $name,
-            state => $result->{$storage_id}->{State},
-            datastore_usage => $result->{$storage_id}->{Stats}->{used},
-            datastore_total => $result->{$storage_id}->{Stats}->{total}
+            state => $results->{$datastore}->{State},
+            datastore_used => $results->{$datastore}->{Stats}->{used},
+            datastore_total => $results->{$datastore}->{Stats}->{total}
         };
     }
 
-    if (scalar(keys %{$self->{storages}}) <= 0) {
-        $self->{output}->add_option_msg(short_msg => "No storage found.");
+    if (scalar(keys %{$self->{datastores}}) <= 0) {
+        $self->{output}->add_option_msg(short_msg => "No datastore found.");
         $self->{output}->option_exit();
     }
 
     my $hostnames = $options{custom}->get_hostnames();
     $self->{cache_name} = 'proxmox_' . $self->{mode} . '_' . $hostnames . '_' . $options{custom}->get_port() . '_' .
         md5_hex(
-            (defined($self->{option_results}->{filter_counters}) ? $self->{option_results}->{filter_counters} : '') . '_' .
             (defined($self->{option_results}->{filter_name}) ? $self->{option_results}->{filter_name} : '') . '_' .
             (defined($self->{option_results}->{datastore_name}) ? $self->{option_results}->{datastore_name} : '')
         );
@@ -205,37 +197,13 @@ Check storage usage.
 
 =over 8
 
-=item B<--filter-counters>
-
-Only display some counters (regexp can be used).
-Example: --filter-counters='^storage-status$'
-
-=item B<--storage-id>
-
-Exact storage ID.
-
 =item B<--storage-name>
 
 Exact storage name (if multiple names: names separated by ':').
 
-=item B<--use-name>
-
-Use storage name for perfdata and display.
-
 =item B<--filter-name>
 
 Filter by storage name (can be a regexp).
-
-
-=item B<--warning-storage-status>
-
-Define the conditions to match for the status to be WARNING.
-You can use the following variables: %{name}, %{state}.
-
-=item B<--critical-storage-status>
-
-Define the conditions to match for the status to be CRITICAL.
-You can use the following variables: %{name}, %{state}.
 
 =item B<--warning-*> B<--critical-*>
 

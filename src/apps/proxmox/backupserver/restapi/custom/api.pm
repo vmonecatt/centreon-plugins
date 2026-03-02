@@ -382,12 +382,10 @@ sub cache_datastores {
     my $datastores = $options{statefile}->get(name => 'datastores');
     if ($has_cache_file == 0 || !defined($timestamp_cache) || ((time() - $timestamp_cache) > (($options{reload_cache_time})))) {
         $datastores = {};
-        my $list_datastores = $self->internal_api_list_storages();
+        my $list_datastores = $self->internal_api_list_datastores();
         foreach my $datastore (@{$list_datastores}) {
-            $datastores->{$storage->{id}} = {
-                State => $storage->{status},
-                Node => $storage->{node},
-                Name => $storage->{storage}
+            $datastores->{$datastore->{store}} = {
+                Status => $storage->{'mount-status'}
             };
         }
         $options{statefile}->write(data => $datastores);
@@ -511,7 +509,7 @@ sub internal_api_get_storage_stats {
 sub internal_api_get_datastore_stats {
     my ($self, %options) = @_;
 
-    my $datastore_stats = $self->request_api(method => 'GET', url_path => '/api2/json/status/datastore-usage');
+    my $datastore_stats = $self->request_api(method => 'GET', url_path => '/api2/json/admin/datastore/' . $options{datastore_name} . '/status');
     return $datastore_stats;
 }
 
@@ -650,21 +648,6 @@ sub api_get_storages {
     return $storages;
 }
 
-# Delete this after customizing the function api_get_datastores
-sub api_list_datastores {
-    my ($self, %options) = @_;
-
-    my $datastores = {};
-    my $list_datastores = $self->internal_api_list_datastores();
-    foreach my $datastore (@{$list_datastores}) {
-        $datastores->{$datastore->{store}} = {
-            Status => $datastore->{'mount-status'}
-        };
-    }
-
-    return $datastores;
-}
-
 sub api_get_datastores {
     my ($self, %options) = @_;
 
@@ -673,12 +656,12 @@ sub api_get_datastores {
     if (defined($options{datastore_name}) && $options{datastore_name} ne '') {
         foreach my $datastore (keys %$datastores) {
             if ($datastores->{$datastore}->{Name} eq $options{datastore_name}) {
-                $datastores->{$datastore}->{Stats} = $self->internal_api_get_datastore_stats();
+                $datastores->{$datastore}->{Stats} = $self->internal_api_get_datastore_stats(datastore_name => $options{datastore_name});
             }
         }
     } else {
         foreach my $datastore (keys %$datastores) {
-            $datastores->{$datastore}->{Stats} = $self->internal_api_get_datastore_stats();
+            $datastores->{$datastore}->{Stats} = $self->internal_api_get_datastore_stats(datastore_name => $datastore);
         }
     }
 
