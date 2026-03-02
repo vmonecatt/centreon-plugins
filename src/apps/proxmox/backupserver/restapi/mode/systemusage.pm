@@ -206,17 +206,10 @@ sub set_counters {
     my ($self, %options) = @_;
 
     $self->{maps_counters_type} = [
-        { name => 'nodes', type => 1, cb_prefix_output => 'prefix_nodes_output', message_multiple => 'All nodes are ok', skipped_code => { -10 => 1, -11 => 1 } }
+        { name => 'system', type => 1, cb_prefix_output => 'prefix_nodes_output', message_multiple => 'All nodes are ok', skipped_code => { -10 => 1, -11 => 1 } }
     ];
 
-    $self->{maps_counters}->{nodes} = [
-        { label => 'node-status', type => 2, set => {
-                key_values => [ { name => 'state' }, { name => 'name' } ],
-                closure_custom_output => $self->can('custom_status_output'),
-                closure_custom_perfdata => sub { return 0; },
-                closure_custom_threshold_check => \&catalog_status_threshold_ng
-            }
-        },
+    $self->{maps_counters}->{system} = [
         { label => 'cpu', nlabel => 'node.cpu.utilization.percentage', set => {
                 key_values => [ { name => 'cpu_total_usage', diff => 1 }, { name => 'cpu_number' }, { name => 'display' } ],
                 output_template => 'cpu usage: %.2f %%',
