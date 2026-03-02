@@ -37,7 +37,7 @@ sub new {
         'list-vms'          => 'apps::proxmox::ve::restapi::mode::listvms',
         'system-usage'      => 'apps::proxmox::backupserver::restapi::mode::systemusage',
         'storage-usage'     => 'apps::proxmox::ve::restapi::mode::storageusage',
-        'datastore-usage'   => 'apps::proxmox::ve::backupserver::mode::datastoreusage',
+        'datastore-usage'   => 'apps::proxmox::backupserver::restapi::mode::datastoreusage',
         'version'           => 'apps::proxmox::backupserver::restapi::mode::version',
         'vm-usage'          => 'apps::proxmox::ve::restapi::mode::vmusage'
     };

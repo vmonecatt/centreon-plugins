@@ -18,7 +18,7 @@
 # limitations under the License.
 #
 
-package apps::proxmox::backupserver::restapi::mode::storageusage;
+package apps::proxmox::backupserver::restapi::mode::datastoreusage;
 
 use base qw(centreon::plugins::templates::counter);
 
@@ -157,17 +157,14 @@ sub manage_selection {
     foreach my $datastore (keys %{$results}) {
         next if (!defined($results->{$datastore}->{Stats}));
 
-        my $name = $results->{$datastore}->{Name};
         if (defined($self->{option_results}->{filter_name}) && $self->{option_results}->{filter_name} ne '' &&
-            $name !~ /$self->{option_results}->{filter_name}/) {
-            $self->{output}->output_add(long_msg => "skipping  '" . $name . "': no matching filter.", debug => 1);
+            $datastore !~ /$self->{option_results}->{filter_name}/) {
+            $self->{output}->output_add(long_msg => "skipping  '" . $datastore . "': not matching filter.", debug => 1);
             next;
         }
 
         $self->{datastores}->{$datastore} = {
-            display => defined($self->{option_results}->{use_name}) ? $name : $datastore,
-            name => $name,
-            state => $results->{$datastore}->{State},
+            display => $datastore,
             datastore_used => $results->{$datastore}->{Stats}->{used},
             datastore_total => $results->{$datastore}->{Stats}->{total}
         };
@@ -193,22 +190,22 @@ __END__
 
 =head1 MODE
 
-Check storage usage.
+Check datastore usage.
 
 =over 8
 
-=item B<--storage-name>
+=item B<--datastore-name>
 
-Exact storage name (if multiple names: names separated by ':').
+Exact datastore name (if multiple names: names separated by ':').
 
 =item B<--filter-name>
 
-Filter by storage name (can be a regexp).
+Filter by datastore name (can be a regexp).
 
 =item B<--warning-*> B<--critical-*>
 
 Thresholds.
-Can be: 'storage' (%).
+Can be: 'datastore' (%).
 
 =back
 

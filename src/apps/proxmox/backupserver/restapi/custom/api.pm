@@ -385,7 +385,7 @@ sub cache_datastores {
         my $list_datastores = $self->internal_api_list_datastores();
         foreach my $datastore (@{$list_datastores}) {
             $datastores->{$datastore->{store}} = {
-                Status => $storage->{'mount-status'}
+                Status => $datastore->{'mount-status'}
             };
         }
         $options{statefile}->write(data => $datastores);
@@ -495,15 +495,6 @@ sub internal_api_get_node_stats {
 
     my $node_stats = $self->request_api(method => 'GET', url_path => '/api2/json/nodes/' . $node . '/status');
     return $node_stats;
-}
-
-sub internal_api_get_storage_stats {
-    my ($self, %options) = @_;
-
-    my (undef, $node, $storage) = split(/\//, $options{storage_id});
-
-    my $storage_stats = $self->request_api(method => 'GET', url_path => '/api2/json/nodes/' . $node . '/storage/' . $storage . '/status');
-    return $storage_stats;
 }
 
 sub internal_api_get_datastore_stats {
@@ -654,10 +645,8 @@ sub api_get_datastores {
     my $datastores = $self->cache_datastores(statefile => $options{statefile});
 
     if (defined($options{datastore_name}) && $options{datastore_name} ne '') {
-        foreach my $datastore (keys %$datastores) {
-            if ($datastores->{$datastore}->{Name} eq $options{datastore_name}) {
-                $datastores->{$datastore}->{Stats} = $self->internal_api_get_datastore_stats(datastore_name => $options{datastore_name});
-            }
+        if (defined($datastores->{ $options{datastore_name} })) {
+            $datastores->{ $options{datastore_name} }->{Stats} = $self->internal_api_get_datastore_stats(datastore_name => $options{datastore_name});
         }
     } else {
         foreach my $datastore (keys %$datastores) {
@@ -674,21 +663,21 @@ __END__
 
 =head1 NAME
 
-Proxmox Backup Server REST API
+Proxmox Backup Server REST API.
 
 =head1 REST API OPTIONS
 
-Proxmox Backup Server REST API
+Proxmox Backup Server REST API.
 
 =over 8
 
 =item B<--hostname>
 
-Set hostname or IP of Proxmox Backup Server
+Set hostname or IP of Proxmox Backup Server.
 
 =item B<--port>
 
-Set Proxmox Backup Server Port (default: '8007')
+Set Proxmox Backup Server Port (default: '8007').
 
 =item B<--proto>
 
@@ -696,13 +685,13 @@ Specify http if needed (default: 'https').
 
 =item B<--api-username>
 
-Set Proxmox Backup Server Username
+Set Proxmox Backup Server Username.
 API user need to have this privileges
 C<VM.Monitor>, C<VM.Audit>, C<Datastore.Audit>, C<Sys.Audit>, C<Sys.Syslog>
 
 =item B<--api-password>
 
-Set Proxmox Backup Server Password
+Set Proxmox Backup Server Password.
 
 =item B<--realm>
 
