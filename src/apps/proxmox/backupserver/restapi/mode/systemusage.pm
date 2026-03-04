@@ -206,12 +206,13 @@ sub set_counters {
     my ($self, %options) = @_;
 
     $self->{maps_counters_type} = [
-        { name => 'system', type => 1, cb_prefix_output => 'prefix_nodes_output', message_multiple => 'All nodes are ok', skipped_code => { -10 => 1, -11 => 1 } }
+        { name => 'nodes', type => 1, cb_prefix_output => 'prefix_nodes_output', message_multiple => 'All nodes are ok', skipped_code => { -10 => 1, -11 => 1 } }
     ];
 
-    $self->{maps_counters}->{system} = [
+    $self->{maps_counters}->{nodes} = [
         { label => 'cpu', nlabel => 'node.cpu.utilization.percentage', set => {
-                key_values => [ { name => 'cpu_total_usage', diff => 1 }, { name => 'cpu_number' }, { name => 'display' } ],
+                key_values => [ { name => 'cpu_total_usage', diff => 1 }, { name => 'display' } ],
+                #key_values => [ { name => 'cpu_total_usage' }, { name => 'display' } ],
                 output_template => 'cpu usage: %.2f %%',
                 closure_custom_calc => $self->can('custom_cpu_calc'),
                 output_use => 'prct_cpu', threshold_use => 'prct_cpu',
@@ -254,10 +255,8 @@ sub new {
     bless $self, $class;
 
     $options{options}->add_options(arguments => {
-        'node-id:s'     => { name => 'node_id' },
-        'node-name:s'   => { name => 'node_name' },
-        'filter-name:s' => { name => 'filter_name' },
-        'use-name'      => { name => 'use_name' }
+        'node-name:s'   => { name => 'node_name', default => 'localhost' },
+        'filter-name:s' => { name => 'filter_name' }
     });
 
     $self->{statefile_cache_nodes} = centreon::plugins::statefile->new(%options);
@@ -268,43 +267,39 @@ sub check_options {
     my ($self, %options) = @_;
     $self->SUPER::check_options(%options);
 
+    # Maybe I should include a check here that errors out if node_name ne 'localhost'
     $self->{statefile_cache_nodes}->check_options(%options);
 }
 
 sub manage_selection {
     my ($self, %options) = @_;
 
-    $self->{nodes} = {};
-
-    my $result = $options{custom}->api_get_nodes(
-        node_id => $self->{option_results}->{node_id},
+    my $results = $options{custom}->api_get_nodes(
         node_name => $self->{option_results}->{node_name},
         statefile => $self->{statefile_cache_nodes}
     );
 
-    foreach my $node_id (keys %{$result}) {
-        next if (!defined($result->{$node_id}->{Stats}));
+    $self->{nodes} = {};
+    foreach my $node_name (keys %{$results}) {
+        next if (!defined($results->{$node_name}->{Stats}));
 
-        my $name = $result->{$node_id}->{Name};
+        #my $name = $result->{$node_id}->{Name};
         if (defined($self->{option_results}->{filter_name}) && $self->{option_results}->{filter_name} ne '' &&
-            $name !~ /$self->{option_results}->{filter_name}/) {
-            $self->{output}->output_add(long_msg => "skipping  '" . $name . "': no matching filter.", debug => 1);
+            $node_name !~ /$self->{option_results}->{filter_name}/) {
+            $self->{output}->output_add(long_msg => "skipping  '" . $node_name . "': no matching filter.", debug => 1);
             next;
         }
 
-        $self->{nodes}->{$node_id} = {
-            display => defined($self->{option_results}->{use_name}) ? $name : $node_id,
-            name => $name,
-            state => $result->{$node_id}->{State},
-            cpu_total_usage => $result->{$node_id}->{Stats}->{cpu},
-            cpu_number => $result->{$node_id}->{Stats}->{cpuinfo}->{cpus},
-            memory_usage => $result->{$node_id}->{Stats}->{memory}->{used},
-            memory_total => $result->{$node_id}->{Stats}->{memory}->{total},
-            swap_usage => $result->{$node_id}->{Stats}->{swap}->{used},
+        $self->{nodes}->{$node_name} = {
+            display => $node_name,
+            cpu_total_usage => $results->{$node_name}->{Stats}->{cpu},
+            memory_usage => $results->{$node_name}->{Stats}->{memory}->{used},
+            memory_total => $results->{$node_name}->{Stats}->{memory}->{total},
+            swap_usage => $results->{$node_name}->{Stats}->{swap}->{used},
             swap_total => 
-                defined($result->{$node_id}->{Stats}->{swap}->{total}) && $result->{$node_id}->{Stats}->{swap}->{total} > 0 ? $result->{$node_id}->{Stats}->{swap}->{total} : undef,
-            fs_usage => $result->{$node_id}->{Stats}->{rootfs}->{used},
-            fs_total => $result->{$node_id}->{Stats}->{rootfs}->{total}
+                defined($results->{$node_name}->{Stats}->{swap}->{total}) && $results->{$node_name}->{Stats}->{swap}->{total} > 0 ? $results->{$node_name}->{Stats}->{swap}->{total} : undef,
+            fs_usage => $results->{$node_name}->{Stats}->{root}->{used},
+            fs_total => $results->{$node_name}->{Stats}->{root}->{total}
         };
     }
 
@@ -318,7 +313,6 @@ sub manage_selection {
         md5_hex(
             (defined($self->{option_results}->{filter_counters}) ? $self->{option_results}->{filter_counters} : '') . '_' .
             (defined($self->{option_results}->{filter_name}) ? $self->{option_results}->{filter_name} : '') . '_' .
-            (defined($self->{option_results}->{node_id}) ? $self->{option_results}->{node_id} : '') . '_' .
             (defined($self->{option_results}->{node_name}) ? $self->{option_results}->{node_name} : '')
         );
 }
@@ -329,21 +323,13 @@ __END__
 
 =head1 MODE
 
-Check node usage.
+Check system usage.
 
 =over 8
-
-=item B<--node-id>
-
-Exact node ID.
 
 =item B<--node-name>
 
 Exact node name (if multiple names: names separated by ':').
-
-=item B<--use-name>
-
-Use node name for perfdata and display.
 
 =item B<--filter-name>
 
@@ -352,22 +338,12 @@ Filter by node name (can be a regexp).
 =item B<--filter-counters>
 
 Only display some counters (regexp can be used).
-Example: --filter-counters='^node-status$'
+Example: --filter-counters='^cpu$'
 
 =item B<--warning-*> B<--critical-*>
 
 Thresholds.
 Can be: 'cpu' (%), 'memory' (%), 'swap' (%), 'fs' (%).
-
-=item B<--warning-node-status>
-
-Define the conditions to match for the status to be WARNING.
-You can use the following variables: %{name}, %{state}.
-
-=item B<--critical-node-status>
-
-Define the conditions to match for the status to be CRITICAL.
-You can use the following variables: %{name}, %{state}.
 
 =back
 

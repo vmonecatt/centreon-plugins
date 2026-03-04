@@ -491,9 +491,10 @@ sub internal_api_get_vm_stats {
 sub internal_api_get_node_stats {
     my ($self, %options) = @_;
 
-    my (undef, $node) = split(/\//, $options{node_id});
-
-    my $node_stats = $self->request_api(method => 'GET', url_path => '/api2/json/nodes/' . $node . '/status');
+    #my (undef, $node) = split(/\//, $options{node_id});
+    
+    #my $node_stats = $self->request_api(method => 'GET', url_path => '/api2/json/nodes/' . $node . '/status');
+    my $node_stats = $self->request_api(method => 'GET', url_path => '/api2/json/nodes/' . $options{node_name} . '/status');
     return $node_stats;
 }
 
@@ -569,30 +570,48 @@ sub api_get_vms {
     return $content_total;
 }
 
+# We can delete api_get_nodes once I'm happy with api_get_system
+# sub api_get_nodes {
+#     my ($self, %options) = @_;
+
+#     my $content_total = $self->cache_nodes(statefile => $options{statefile});
+
+#     if (defined($options{node_id}) && $options{node_id} ne '') {
+#         if (defined($content_total->{$options{node_id}})) {
+#             $content_total->{$options{node_id}}->{Stats} = $self->internal_api_get_node_stats(node_id => $options{node_id});
+#         }
+#     } elsif (defined($options{node_name}) && $options{node_name} ne '') {
+#         my $node_id;
+#         foreach (keys %{$content_total}) {
+#             if ($content_total->{$_}->{Name} eq $options{node_name}) {
+#                 $node_id = $_;
+#                 last;
+#             }
+#         }
+#         if (defined($node_id)) {
+#             $content_total->{$node_id}->{Stats} = $self->internal_api_get_node_stats(node_id => $node_id);
+#         }
+#     } else {
+#         foreach my $node_id (keys %{$content_total}) {
+#             $content_total->{$node_id}->{Stats} = $self->internal_api_get_node_stats(node_id => $node_id);
+#         }
+#     }
+
+#     return $content_total;
+# }
+
 sub api_get_nodes {
     my ($self, %options) = @_;
 
-    my $content_total = $self->cache_nodes(statefile => $options{statefile});
-
-    if (defined($options{node_id}) && $options{node_id} ne '') {
-        if (defined($content_total->{$options{node_id}})) {
-            $content_total->{$options{node_id}}->{Stats} = $self->internal_api_get_node_stats(node_id => $options{node_id});
-        }
-    } elsif (defined($options{node_name}) && $options{node_name} ne '') {
-        my $node_id;
-        foreach (keys %{$content_total}) {
-            if ($content_total->{$_}->{Name} eq $options{node_name}) {
-                $node_id = $_;
-                last;
-            }
-        }
-        if (defined($node_id)) {
-            $content_total->{$node_id}->{Stats} = $self->internal_api_get_node_stats(node_id => $node_id);
-        }
-    } else {
-        foreach my $node_id (keys %{$content_total}) {
-            $content_total->{$node_id}->{Stats} = $self->internal_api_get_node_stats(node_id => $node_id);
-        }
+    # I don't think I need this cache_nodes on PBS
+    #my $content_total = $self->cache_nodes(statefile => $options{statefile});
+    # I need some sort of "index" for {Stats} and that should be the node name
+    my $content_total = {};
+    if (defined($options{node_name}) && $options{node_name} ne '') {
+        #$content_total->{$options{node_name}}->{Stats} = $self->internal_api_get_node_stats(node_name => $options{node_name});
+        $content_total->{ $options{node_name} } = {
+            Stats => $self->internal_api_get_node_stats(node_name => $options{node_name})
+        };
     }
 
     return $content_total;
