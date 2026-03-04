@@ -254,6 +254,9 @@ sub new {
     my $self = $class->SUPER::new(package => __PACKAGE__, %options, statefile => 1, force_new_perfdata => 1);
     bless $self, $class;
 
+    # Leaving the options 'filter-name' and 'node-name' for reference only.
+    # Currently, 'localhost' is the only value that makes sense on 
+    # Proxmox Backup Server.
     $options{options}->add_options(arguments => {
         'node-name:s'   => { name => 'node_name', default => 'localhost' },
         'filter-name:s' => { name => 'filter_name' }
@@ -267,7 +270,11 @@ sub check_options {
     my ($self, %options) = @_;
     $self->SUPER::check_options(%options);
 
-    # Maybe I should include a check here that errors out if node_name ne 'localhost'
+    if (!defined($self->{option_results}-{node_name}) || $self->{option_results}-{node_name} ne 'localhost') {
+        $self->{output}->add_option_msg(short_msg => 'Currently, \'localhost\' is the only valid value for \'node-name\'');
+        $self->{output}->option_exit();
+    }
+
     $self->{statefile_cache_nodes}->check_options(%options);
 }
 
@@ -283,7 +290,6 @@ sub manage_selection {
     foreach my $node_name (keys %{$results}) {
         next if (!defined($results->{$node_name}->{Stats}));
 
-        #my $name = $result->{$node_id}->{Name};
         if (defined($self->{option_results}->{filter_name}) && $self->{option_results}->{filter_name} ne '' &&
             $node_name !~ /$self->{option_results}->{filter_name}/) {
             $self->{output}->output_add(long_msg => "skipping  '" . $node_name . "': no matching filter.", debug => 1);
@@ -326,14 +332,6 @@ __END__
 Check system usage.
 
 =over 8
-
-=item B<--node-name>
-
-Exact node name (if multiple names: names separated by ':').
-
-=item B<--filter-name>
-
-Filter by node name (can be a regexp).
 
 =item B<--filter-counters>
 

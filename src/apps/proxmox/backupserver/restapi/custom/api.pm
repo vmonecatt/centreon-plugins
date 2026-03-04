@@ -330,50 +330,6 @@ sub cache_vms {
     return $vms;
 }
 
-sub cache_nodes {
-    my ($self, %options) = @_;
-
-    my $has_cache_file = $options{statefile}->read(statefile => 'cache_proxmox_node_' . $self->{hostname} . '_' . $self->{port});
-    my $timestamp_cache = $options{statefile}->get(name => 'last_timestamp');
-    my $nodes = $options{statefile}->get(name => 'nodes');
-    if ($has_cache_file == 0 || !defined($timestamp_cache) || ((time() - $timestamp_cache) > (($options{reload_cache_time})))) {
-        $nodes = {};
-        my $list_nodes = $self->internal_api_list_nodes();
-        foreach my $node (@{$list_nodes}) {
-            $nodes->{ $node->{id} } = {
-                State => $node->{status},
-                Name => $node->{node}
-            };
-        }
-        $options{statefile}->write(data => $nodes);
-    }
-
-    return $nodes;
-}
-
-# This must be deleted after I am happy with the function cache_datastore
-sub cache_storages {
-    my ($self, %options) = @_;
-
-    my $has_cache_file = $options{statefile}->read(statefile => 'cache_proxmox_storage_' . $self->{hostname} . '_' . $self->{port});
-    my $timestamp_cache = $options{statefile}->get(name => 'last_timestamp');
-    my $storages = $options{statefile}->get(name => 'storages');
-    if ($has_cache_file == 0 || !defined($timestamp_cache) || ((time() - $timestamp_cache) > (($options{reload_cache_time})))) {
-        $storages = {};
-        my $list_storages = $self->internal_api_list_storages();
-        foreach my $storage (@{$list_storages}) {
-            $storages->{$storage->{id}} = {
-                State => $storage->{status},
-                Node => $storage->{node},
-                Name => $storage->{storage}
-            };
-        }
-        $options{statefile}->write(data => $storages);
-    }
-
-    return $storages;
-}
-
 sub cache_datastores {
     my ($self, %options) = @_;
 
@@ -570,92 +526,17 @@ sub api_get_vms {
     return $content_total;
 }
 
-# We can delete api_get_nodes once I'm happy with api_get_system
-# sub api_get_nodes {
-#     my ($self, %options) = @_;
-
-#     my $content_total = $self->cache_nodes(statefile => $options{statefile});
-
-#     if (defined($options{node_id}) && $options{node_id} ne '') {
-#         if (defined($content_total->{$options{node_id}})) {
-#             $content_total->{$options{node_id}}->{Stats} = $self->internal_api_get_node_stats(node_id => $options{node_id});
-#         }
-#     } elsif (defined($options{node_name}) && $options{node_name} ne '') {
-#         my $node_id;
-#         foreach (keys %{$content_total}) {
-#             if ($content_total->{$_}->{Name} eq $options{node_name}) {
-#                 $node_id = $_;
-#                 last;
-#             }
-#         }
-#         if (defined($node_id)) {
-#             $content_total->{$node_id}->{Stats} = $self->internal_api_get_node_stats(node_id => $node_id);
-#         }
-#     } else {
-#         foreach my $node_id (keys %{$content_total}) {
-#             $content_total->{$node_id}->{Stats} = $self->internal_api_get_node_stats(node_id => $node_id);
-#         }
-#     }
-
-#     return $content_total;
-# }
-
 sub api_get_nodes {
     my ($self, %options) = @_;
 
-    # I don't think I need this cache_nodes on PBS
-    #my $content_total = $self->cache_nodes(statefile => $options{statefile});
-    # I need some sort of "index" for {Stats} and that should be the node name
     my $content_total = {};
     if (defined($options{node_name}) && $options{node_name} ne '') {
-        #$content_total->{$options{node_name}}->{Stats} = $self->internal_api_get_node_stats(node_name => $options{node_name});
         $content_total->{ $options{node_name} } = {
             Stats => $self->internal_api_get_node_stats(node_name => $options{node_name})
         };
     }
 
     return $content_total;
-}
-
-sub api_get_storages {
-    my ($self, %options) = @_;
-
-    my $storages = $self->cache_storages(statefile => $options{statefile});
-
-    if (defined($options{storage_id}) && $options{storage_id} ne '') {
-        if (defined($storages->{ $options{storage_id} })) {
-            $storages->{ $options{storage_id} }->{Stats} = $self->internal_api_get_storage_stats(storage_id => $options{storage_id});
-        }
-    } elsif (defined($options{node_id}) && $options{node_id} ne '') {
-        my $nodes = $self->cache_nodes(statefile => $options{statefile});
-        foreach my $node_id (keys %$nodes) {
-            if ($node_id eq $options{node_id}) {
-                foreach my $storage_id (keys %$storages) {
-                    if ($storages->{$storage_id}->{Node} eq $nodes->{$node_id}->{Name}) {
-                        $storages->{$storage_id}->{Stats} = $self->internal_api_get_storage_stats(storage_id => $storage_id);
-                    }
-                }
-            }
-        }
-    } elsif (defined($options{node_name}) && $options{node_name} ne '') {
-        foreach my $storage_id (keys %$storages) {
-            if ($storages->{$storage_id}->{Node} eq $options{node_name}) {
-                $storages->{$storage_id}->{Stats} = $self->internal_api_get_storage_stats(storage_id => $storage_id);
-            }
-        }
-    } elsif (defined($options{storage_name}) && $options{storage_name} ne '') {
-        foreach my $storage_id (keys %$storages) {
-            if ($storages->{$storage_id}->{Name} eq $options{storage_name}) {
-                $storages->{$storage_id}->{Stats} = $self->internal_api_get_storage_stats(storage_id => $storage_id);
-            }
-        }
-    } else {
-        foreach my $storage_id (keys %$storages) {
-            $storages->{$storage_id}->{Stats} = $self->internal_api_get_storage_stats(storage_id => $storage_id);
-        }
-    }
-
-    return $storages;
 }
 
 sub api_get_datastores {
