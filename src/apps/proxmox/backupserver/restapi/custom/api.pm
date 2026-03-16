@@ -447,9 +447,6 @@ sub internal_api_get_vm_stats {
 sub internal_api_get_node_stats {
     my ($self, %options) = @_;
 
-    #my (undef, $node) = split(/\//, $options{node_id});
-    
-    #my $node_stats = $self->request_api(method => 'GET', url_path => '/api2/json/nodes/' . $node . '/status');
     my $node_stats = $self->request_api(method => 'GET', url_path => '/api2/json/nodes/' . $options{node_name} . '/status');
     return $node_stats;
 }

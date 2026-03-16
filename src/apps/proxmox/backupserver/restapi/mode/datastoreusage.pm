@@ -27,12 +27,6 @@ use warnings;
 use Digest::MD5 qw(md5_hex);
 use centreon::plugins::templates::catalog_functions qw(catalog_status_threshold_ng);
 
-sub custom_status_output {
-    my ($self, %options) = @_;
-
-    return 'state: ' . $self->{result_values}->{state};
-}
-
 sub custom_datastore_perfdata {
     my ($self, %options) = @_;
 
@@ -119,16 +113,6 @@ sub new {
     my $self = $class->SUPER::new(package => __PACKAGE__, %options, statefile => 1, force_new_perfdata => 1);
     bless $self, $class;
 
-    # $options{options}->add_options(arguments => {
-    #     'storage-id:s'   => { name => 'storage_id' },
-    #     'storage-name:s' => { name => 'storage_name' },
-    #     'filter-name:s'  => { name => 'filter_name' },
-    #     'use-name'       => { name => 'use_name' },
-    #     'node-id:s'      => { name => 'node_id' },
-    #     'node-name:s'    => { name => 'node_name' }
-    # });
-
-
     $options{options}->add_options(arguments => {
         'datastore-name:s'  => { name => 'datastore_name' },
         'filter-name:s'     => { name => 'filter_name' }
@@ -181,7 +165,7 @@ sub manage_selection {
             (defined($self->{option_results}->{filter_name}) ? $self->{option_results}->{filter_name} : '') . '_' .
             (defined($self->{option_results}->{datastore_name}) ? $self->{option_results}->{datastore_name} : '')
         );
-        
+
 }
 
 1;

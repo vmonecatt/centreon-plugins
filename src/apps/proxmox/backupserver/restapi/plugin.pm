@@ -30,16 +30,10 @@ sub new {
     bless $self, $class;
 
     $self->{modes} = {
-        'discovery'         => 'apps::proxmox::ve::restapi::mode::discovery',
-        'list-nodes'        => 'apps::proxmox::ve::restapi::mode::listnodes',
-        'list-storages'     => 'apps::proxmox::ve::restapi::mode::liststorages',
         'list-datastores'   => 'apps::proxmox::backupserver::restapi::mode::listdatastores',
-        'list-vms'          => 'apps::proxmox::ve::restapi::mode::listvms',
         'system-usage'      => 'apps::proxmox::backupserver::restapi::mode::systemusage',
-        'storage-usage'     => 'apps::proxmox::ve::restapi::mode::storageusage',
         'datastore-usage'   => 'apps::proxmox::backupserver::restapi::mode::datastoreusage',
-        'version'           => 'apps::proxmox::backupserver::restapi::mode::version',
-        'vm-usage'          => 'apps::proxmox::ve::restapi::mode::vmusage'
+        'version'           => 'apps::proxmox::backupserver::restapi::mode::version'
     };
 
     $self->{custom_modes}->{api} = 'apps::proxmox::backupserver::restapi::custom::api';
